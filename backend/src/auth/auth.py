@@ -1,5 +1,5 @@
 import json
-from flask import request, _request_ctx_stack
+from flask import request, _request_ctx_stack, abort
 from functools import wraps
 from jose import jwt
 from urllib.request import urlopen
@@ -25,9 +25,11 @@ class AuthError(Exception):
 # Done implement get_token_auth_header() method
 def get_token_auth_header():
     """Obtains the Access Token from the Authorization Header"""
-    
+
+    # 'Authorization': 'Bearer <TOKEN>'
     auth = request.headers.get('Authorization', None)
 
+    # Check if Authorization is present in the header or not
     if not auth:
         raise AuthError({
             'code': 'authorization_header_missing',
@@ -53,11 +55,11 @@ def get_token_auth_header():
             'code': 'invalid_header',
             'description': 'Authorization header must be bearer token.'
         }, 401)
-
+    
     token = parts[1]
     return token
-
-
+    
+    
 
 # Done implement check_permissions(permission, payload) method
 def check_permissions(permission, payload):
@@ -79,10 +81,13 @@ def check_permissions(permission, payload):
 
 # Done implement verify_decode_jwt(token) method
 def verify_decode_jwt(token):
-
+    # GET THE PUBLIC KEY FROM AUTH0
     jsonurl = urlopen(f'https://{AUTH0_DOMAIN}/.well-known/jwks.json')
     jwks = json.loads(jsonurl.read())
+    # GET THE DATA IN THE HEADER
     unverified_header = jwt.get_unverified_header(token)
+
+    # CHOOSE OUR KEY
     rsa_key = {}
     if 'kid' not in unverified_header:
         raise AuthError({
@@ -99,6 +104,8 @@ def verify_decode_jwt(token):
                 'n': key['n'],
                 'e': key['e']
             }
+            
+    # Finally, verify!!!
     if rsa_key:
         try:
             payload = jwt.decode(
@@ -139,15 +146,15 @@ def requires_auth(permission=''):
     def requires_auth_decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            token = get_token_auth_header()
-
             try:
+                token = get_token_auth_header()
                 payload = verify_decode_jwt(token)
             except:
-                raise AuthError({
-                    'code': 'invalid token',
-                    'description': 'Invalid Token'
-                }, 401)
+                abort(401)
+                # raise AuthError({
+                #     'code': 'invalid token',
+                #     'description': 'Invalid Token'
+                # }, 401)
 
             check_permissions(permission, payload)
 

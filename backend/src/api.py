@@ -28,7 +28,7 @@ def get_drinks():
     try:
         all_drinks = Drink.query.order_by(Drink.id).all()
         if not all_drinks:
-            abort(404)
+            abort(400)
 
         drinks = [drink.short() for drink in all_drinks]
         
@@ -195,3 +195,12 @@ def unprocessable(error):
     "error": 401,
     "message": "Authorization error"
     }), 401
+
+# Done implement error handlers for server error
+@app.errorhandler(500)
+def unprocessable(error):
+    return jsonify({
+    "success": False, 
+    "error": 500,
+    "message": "Internal Server Error"
+    }), 500
